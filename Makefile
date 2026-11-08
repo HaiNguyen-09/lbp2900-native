@@ -1,7 +1,8 @@
 CC = gcc
 CFLAGS = -O3 -Wall -Wextra -Wno-unused-parameter -pthread
 USB_SO = /lib/x86_64-linux-gnu/libusb-1.0.so.0
-GTK_LIBS = /lib/x86_64-linux-gnu/libgtk-4.so.1 \
+GTK_LIBS = /lib/x86_64-linux-gnu/libadwaita-1.so.0 \
+           /lib/x86_64-linux-gnu/libgtk-4.so.1 \
            /lib/x86_64-linux-gnu/libgobject-2.0.so.0 \
            /lib/x86_64-linux-gnu/libglib-2.0.so.0 \
            /lib/x86_64-linux-gnu/libcairo.so.2 -lm

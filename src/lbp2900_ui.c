@@ -1,8 +1,8 @@
 /*
  * lbp2900_ui.c — Canon LASER SHOT LBP-2900
- * CAPT Status Monitor & Maintenance UI (Compiled C + GTK4 + Cairo)
+ * CAPT Status Monitor & Maintenance UI (Compiled C + GTK4 + Libadwaita + Cairo)
  *
- * Ultra-lightweight native GTK4 binary (no Python/Electron overhead).
+ * Ultra-lightweight native GTK4 + Libadwaita (libadwaita-1) binary.
  * Connects to lbp2900d via /tmp/lbp2900-control.sock.
  */
 
@@ -20,22 +20,29 @@
 #include <sys/un.h>
 
 /*
- * Minimal GTK4 / GDK4 / GObject / GLib / Cairo C ABI declarations
- * (Compiles directly against /lib/x86_64-linux-gnu/libgtk-4.so.1)
+ * Minimal GTK4 / Libadwaita-1 / GDK4 / GObject / GLib / Cairo C ABI declarations
+ * (Compiles directly against libadwaita-1.so.0 and libgtk-4.so.1)
  */
 typedef void GtkWidget;
 typedef void GtkWindow;
 typedef void GtkBox;
-typedef void GtkNotebook;
 typedef void GtkLabel;
 typedef void GtkButton;
-typedef void GtkCheckButton;
 typedef void GtkProgressBar;
 typedef void GtkDrawingArea;
-typedef void GtkCssProvider;
 typedef void GdkDisplay;
 typedef void GMainLoop;
 typedef void GMainContext;
+typedef void GtkIconTheme;
+typedef void AdwStyleManager;
+typedef void AdwViewStack;
+typedef void AdwViewStackPage;
+typedef void AdwViewSwitcher;
+typedef void AdwPreferencesPage;
+typedef void AdwPreferencesGroup;
+typedef void AdwPreferencesRow;
+typedef void AdwActionRow;
+typedef void AdwSwitchRow;
 typedef void *gpointer;
 typedef int gboolean;
 typedef unsigned int guint;
@@ -60,25 +67,35 @@ typedef void (*GtkDrawingAreaDrawFunc)(GtkDrawingArea *drawing_area,
 #define GTK_ALIGN_END    2
 #define GTK_ALIGN_CENTER 3
 
+/* AdwColorScheme enum (libadwaita-1) */
+#define ADW_COLOR_SCHEME_DEFAULT      0
+#define ADW_COLOR_SCHEME_FORCE_LIGHT  1
+#define ADW_COLOR_SCHEME_PREFER_LIGHT 2
+#define ADW_COLOR_SCHEME_PREFER_DARK  3
+#define ADW_COLOR_SCHEME_FORCE_DARK   4
+
+/* AdwViewSwitcherPolicy enum */
+#define ADW_VIEW_SWITCHER_POLICY_NARROW 0
+#define ADW_VIEW_SWITCHER_POLICY_WIDE   1
+
+/* GTK4 & GLib Core */
 extern void gtk_init(void);
 extern GMainLoop *g_main_loop_new(GMainContext *context, gboolean is_running);
 extern void g_main_loop_run(GMainLoop *loop);
 extern void g_main_loop_quit(GMainLoop *loop);
+extern void g_set_prgname(const char *prgname);
+extern void g_set_application_name(const char *application_name);
 
-extern GtkWidget *gtk_window_new(void);
 extern void gtk_window_set_title(GtkWindow *window, const char *title);
 extern void gtk_window_set_default_size(GtkWindow *window, int width, int height);
 extern void gtk_window_set_resizable(GtkWindow *window, gboolean resizable);
-extern void gtk_window_set_child(GtkWindow *window, GtkWidget *child);
 extern void gtk_window_present(GtkWindow *window);
 extern void gtk_window_set_default_icon_name(const char *name);
 extern void gtk_window_set_icon_name(GtkWindow *window, const char *name);
 
-typedef void GtkIconTheme;
+extern GdkDisplay *gdk_display_get_default(void);
 extern GtkIconTheme *gtk_icon_theme_get_for_display(GdkDisplay *display);
 extern void gtk_icon_theme_add_search_path(GtkIconTheme *self, const char *path);
-extern void g_set_prgname(const char *prgname);
-extern void g_set_application_name(const char *application_name);
 
 extern void gtk_widget_queue_draw(GtkWidget *widget);
 extern void gtk_widget_set_size_request(GtkWidget *widget, int width, int height);
@@ -97,24 +114,13 @@ extern void gtk_widget_remove_css_class(GtkWidget *widget, const char *css_class
 extern GtkWidget *gtk_box_new(int orientation, int spacing);
 extern void gtk_box_append(GtkBox *box, GtkWidget *child);
 
-extern GtkWidget *gtk_notebook_new(void);
-extern int gtk_notebook_append_page(GtkNotebook *notebook, GtkWidget *child, GtkWidget *tab_label);
-extern void gtk_notebook_set_current_page(GtkNotebook *notebook, int page_num);
-
-extern GtkWidget *gtk_separator_new(int orientation);
-
 extern GtkWidget *gtk_label_new(const char *str);
 extern void gtk_label_set_text(GtkLabel *label, const char *str);
-extern void gtk_label_set_markup(GtkLabel *label, const char *str);
 extern void gtk_label_set_wrap(GtkLabel *label, gboolean wrap);
 extern void gtk_label_set_xalign(GtkLabel *label, float xalign);
 
 extern GtkWidget *gtk_button_new_with_label(const char *label);
 extern void gtk_button_set_label(GtkButton *button, const char *label);
-
-extern GtkWidget *gtk_check_button_new_with_label(const char *label);
-extern void gtk_check_button_set_active(GtkCheckButton *self, gboolean setting);
-extern gboolean gtk_check_button_get_active(GtkCheckButton *self);
 
 extern GtkWidget *gtk_progress_bar_new(void);
 extern void gtk_progress_bar_set_fraction(GtkProgressBar *pbar, gdouble fraction);
@@ -129,19 +135,61 @@ extern void gtk_drawing_area_set_draw_func(GtkDrawingArea *self,
                                            gpointer user_data,
                                            GDestroyNotify destroy);
 
-extern GtkCssProvider *gtk_css_provider_new(void);
-extern void gtk_css_provider_load_from_string(GtkCssProvider *css_provider, const char *string);
-extern GdkDisplay *gdk_display_get_default(void);
-extern void gtk_style_context_add_provider_for_display(GdkDisplay *display,
-                                                       void *provider,
-                                                       guint priority);
-
 extern gulong g_signal_connect_data(gpointer instance, const gchar *detailed_signal,
                                     GCallback c_handler, gpointer data, void *destroy_data, int connect_flags);
 extern guint g_timeout_add(guint interval, GSourceFunc function, gpointer data);
 
 #define g_signal_connect(instance, detailed_signal, c_handler, data) \
     g_signal_connect_data((instance), (detailed_signal), (c_handler), (data), NULL, 0)
+
+/* Libadwaita (libadwaita-1) Core & Widgets */
+extern void adw_init(void);
+extern AdwStyleManager *adw_style_manager_get_default(void);
+extern void adw_style_manager_set_color_scheme(AdwStyleManager *self, int color_scheme);
+extern gboolean adw_style_manager_get_dark(AdwStyleManager *self);
+
+extern GtkWidget *adw_application_window_new(void *app);
+extern void adw_application_window_set_content(GtkWindow *self, GtkWidget *content);
+
+extern GtkWidget *adw_toolbar_view_new(void);
+extern void adw_toolbar_view_add_top_bar(GtkWidget *self, GtkWidget *widget);
+extern void adw_toolbar_view_set_content(GtkWidget *self, GtkWidget *content);
+
+extern GtkWidget *adw_header_bar_new(void);
+extern void adw_header_bar_set_title_widget(GtkWidget *self, GtkWidget *title_widget);
+extern void adw_header_bar_set_show_start_title_buttons(GtkWidget *self, gboolean setting);
+extern void adw_header_bar_set_show_end_title_buttons(GtkWidget *self, gboolean setting);
+
+extern GtkWidget *adw_view_stack_new(void);
+extern AdwViewStackPage *adw_view_stack_add_titled_with_icon(AdwViewStack *self,
+                                                             GtkWidget *child,
+                                                             const char *name,
+                                                             const char *title,
+                                                             const char *icon_name);
+extern void adw_view_stack_set_visible_child_name(AdwViewStack *self, const char *name);
+
+extern GtkWidget *adw_view_switcher_new(void);
+extern void adw_view_switcher_set_stack(AdwViewSwitcher *self, AdwViewStack *stack);
+extern void adw_view_switcher_set_policy(AdwViewSwitcher *self, int policy);
+
+extern GtkWidget *adw_preferences_page_new(void);
+extern void adw_preferences_page_add(AdwPreferencesPage *self, AdwPreferencesGroup *group);
+
+extern GtkWidget *adw_preferences_group_new(void);
+extern void adw_preferences_group_set_title(AdwPreferencesGroup *self, const char *title);
+extern void adw_preferences_group_set_description(AdwPreferencesGroup *self, const char *description);
+extern void adw_preferences_group_add(AdwPreferencesGroup *self, GtkWidget *child);
+
+extern void adw_preferences_row_set_title(AdwPreferencesRow *self, const char *title);
+
+extern GtkWidget *adw_action_row_new(void);
+extern void adw_action_row_set_subtitle(AdwActionRow *self, const char *subtitle);
+extern void adw_action_row_add_suffix(AdwActionRow *self, GtkWidget *widget);
+extern void adw_action_row_set_activatable_widget(AdwActionRow *self, GtkWidget *widget);
+
+extern GtkWidget *adw_switch_row_new(void);
+extern void adw_switch_row_set_active(AdwSwitchRow *self, gboolean is_active);
+extern gboolean adw_switch_row_get_active(AdwSwitchRow *self);
 
 /* Cairo drawing functions */
 extern void cairo_set_source_rgb(cairo_t *cr, double red, double green, double blue);
@@ -153,6 +201,7 @@ extern void cairo_stroke(cairo_t *cr);
 extern void cairo_set_line_width(cairo_t *cr, double width);
 extern void cairo_move_to(cairo_t *cr, double x, double y);
 extern void cairo_line_to(cairo_t *cr, double x, double y);
+extern void cairo_new_sub_path(cairo_t *cr);
 extern void cairo_arc(cairo_t *cr, double xc, double yc, double radius, double angle1, double angle2);
 extern void cairo_select_font_face(cairo_t *cr, const char *family, int slant, int weight);
 extern void cairo_set_font_size(cairo_t *cr, double size);
@@ -162,8 +211,9 @@ extern void cairo_show_text(cairo_t *cr, const char *utf8);
  * UI State & Widgets
  */
 static GMainLoop *g_loop = NULL;
+static AdwStyleManager *g_style_mgr = NULL;
 static GtkWidget *g_win = NULL;
-static GtkWidget *g_notebook = NULL;
+static GtkWidget *g_view_stack = NULL;
 static GtkWidget *g_drawing_area = NULL;
 static GtkWidget *g_banner_box = NULL;
 static GtkWidget *g_lbl_headline = NULL;
@@ -175,7 +225,7 @@ static GtkWidget *g_pbar_job = NULL;
 static GtkWidget *g_btn_pause = NULL;
 static GtkWidget *g_btn_resume_paper = NULL;
 static GtkWidget *g_btn_cancel = NULL;
-static GtkWidget *g_chk_autopopup = NULL;
+static GtkWidget *g_sw_autopopup = NULL;
 static gboolean   g_loading_prefs = 0;
 
 static int g_cur_state = PRN_STATE_DISCONNECTED;
@@ -231,12 +281,13 @@ static int send_ctrl_cmd(const char *cmd, char *resp, size_t resp_sz) {
 
 /*
  * Full-Size Cairo Illustration of the Canon LASER SHOT LBP-2900 Printer
- * with Live LED Status Lights and Animated Paper Feed
- * (Log text is placed above USB 04a9:2676 in the footer)
+ * with Live LED Status Lights, Animated Paper Feed, and Native Adwaita Dark/Light Adaptation
  */
 static void on_draw_printer(GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer data) {
     (void)area;
     (void)data;
+
+    gboolean is_dark = g_style_mgr ? adw_style_manager_get_dark(g_style_mgr) : 0;
 
     /* Strict single-preview state machine: only 1 action preview can be active at a time */
     bool is_disconnected = (!g_cur_usb || g_cur_state == PRN_STATE_DISCONNECTED);
@@ -248,23 +299,13 @@ static void on_draw_printer(GtkDrawingArea *area, cairo_t *cr, int w, int h, gpo
     bool is_duplex_wait  = (!is_disconnected && !is_out_of_paper && !is_error && !is_printing &&
                             g_cur_state == PRN_STATE_MANUAL_DUPLEX_WAIT);
 
-    /* Background card */
-    cairo_set_source_rgb(cr, 0.95, 0.96, 0.98);
-    cairo_rectangle(cr, 0, 0, w, h);
-    cairo_fill(cr);
-
-    cairo_set_source_rgb(cr, 0.80, 0.83, 0.88);
-    cairo_set_line_width(cr, 1.0);
-    cairo_rectangle(cr, 0.5, 0.5, w - 1, h - 1);
-    cairo_stroke(cr);
-
     double cx = w * 0.5;
-    double cy = h * 0.54;
+    double cy = h * 0.50;
 
     /* Preview 1: Top output paper sheet (ONLY when actively printing/rendering) */
     if (is_printing) {
         double slide = (g_anim_tick % 10) * 1.4;
-        cairo_set_source_rgb(cr, 1.0, 1.0, 1.0);
+        cairo_set_source_rgb(cr, 0.98, 0.99, 1.0);
         cairo_rectangle(cr, cx - 38, cy - 62 - slide, 76, 36);
         cairo_fill_preserve(cr);
         cairo_set_source_rgb(cr, 0.45, 0.50, 0.58);
@@ -281,7 +322,10 @@ static void on_draw_printer(GtkDrawingArea *area, cairo_t *cr, int w, int h, gpo
     }
 
     /* Main Canon LBP-2900 Body (Classic Canon two-tone light grey + dark slate top cover) */
-    cairo_set_source_rgb(cr, 0.86, 0.87, 0.89);
+    if (is_dark)
+        cairo_set_source_rgb(cr, 0.78, 0.80, 0.84);
+    else
+        cairo_set_source_rgb(cr, 0.86, 0.87, 0.89);
     cairo_rectangle(cr, cx - 72, cy - 36, 144, 68);
     cairo_fill_preserve(cr);
     cairo_set_source_rgb(cr, 0.38, 0.40, 0.44);
@@ -289,12 +333,12 @@ static void on_draw_printer(GtkDrawingArea *area, cairo_t *cr, int w, int h, gpo
     cairo_stroke(cr);
 
     /* Top Recessed Output Tray Slope (Dark grey/blue-grey like real LBP-2900) */
-    cairo_set_source_rgb(cr, 0.46, 0.49, 0.54);
+    cairo_set_source_rgb(cr, 0.44, 0.47, 0.52);
     cairo_rectangle(cr, cx - 52, cy - 36, 104, 22);
     cairo_fill(cr);
 
     /* Front Multi-Purpose Paper Tray Slot */
-    cairo_set_source_rgb(cr, 0.68, 0.70, 0.74);
+    cairo_set_source_rgb(cr, 0.64, 0.66, 0.70);
     cairo_rectangle(cr, cx - 48, cy + 12, 96, 20);
     cairo_fill_preserve(cr);
     cairo_set_source_rgb(cr, 0.40, 0.42, 0.46);
@@ -303,7 +347,7 @@ static void on_draw_printer(GtkDrawingArea *area, cairo_t *cr, int w, int h, gpo
 
     /* Preview 2: Paper in Lower Input Tray (red X ONLY when in Out-of-Paper state) */
     if (!is_out_of_paper) {
-        cairo_set_source_rgb(cr, 1.0, 1.0, 1.0);
+        cairo_set_source_rgb(cr, 0.98, 0.99, 1.0);
         cairo_rectangle(cr, cx - 36, cy + 20, 72, 24);
         cairo_fill_preserve(cr);
         cairo_set_source_rgb(cr, 0.55, 0.58, 0.62);
@@ -311,11 +355,11 @@ static void on_draw_printer(GtkDrawingArea *area, cairo_t *cr, int w, int h, gpo
     } else {
         /* Flashing red empty tray indicator */
         if (g_anim_tick % 2 == 0) {
-            cairo_set_source_rgba(cr, 0.90, 0.15, 0.15, 0.22);
+            cairo_set_source_rgba(cr, 0.90, 0.15, 0.15, 0.25);
             cairo_rectangle(cr, cx - 40, cy + 16, 80, 28);
             cairo_fill(cr);
         }
-        cairo_set_source_rgb(cr, 0.85, 0.10, 0.10);
+        cairo_set_source_rgb(cr, 0.88, 0.14, 0.14);
         cairo_set_line_width(cr, 2.5);
         cairo_move_to(cr, cx - 12, cy + 20);
         cairo_line_to(cr, cx + 12, cy + 40);
@@ -325,7 +369,7 @@ static void on_draw_printer(GtkDrawingArea *area, cairo_t *cr, int w, int h, gpo
     }
 
     /* Canon Brand Label on Front Cover */
-    cairo_set_source_rgb(cr, 0.15, 0.18, 0.24);
+    cairo_set_source_rgb(cr, 0.14, 0.16, 0.22);
     cairo_select_font_face(cr, "Sans", 0, 1);
     cairo_set_font_size(cr, 11.0);
     cairo_move_to(cr, cx - 22, cy - 2);
@@ -338,7 +382,8 @@ static void on_draw_printer(GtkDrawingArea *area, cairo_t *cr, int w, int h, gpo
     if (!is_disconnected)
         cairo_set_source_rgb(cr, 0.12, 0.78, 0.25); /* Bright green */
     else
-        cairo_set_source_rgb(cr, 0.55, 0.55, 0.55); /* Off */
+        cairo_set_source_rgb(cr, 0.50, 0.50, 0.50); /* Off */
+    cairo_new_sub_path(cr);
     cairo_arc(cr, cx + 56, cy - 20, 5.0, 0, 2 * M_PI);
     cairo_fill_preserve(cr);
     cairo_set_source_rgb(cr, 0.2, 0.2, 0.2);
@@ -357,8 +402,9 @@ static void on_draw_printer(GtkDrawingArea *area, cairo_t *cr, int w, int h, gpo
         else
             cairo_set_source_rgb(cr, 0.10, 0.45, 0.18);
     } else {
-        cairo_set_source_rgb(cr, 0.72, 0.74, 0.77);
+        cairo_set_source_rgb(cr, 0.68, 0.70, 0.74);
     }
+    cairo_new_sub_path(cr);
     cairo_arc(cr, cx + 56, cy - 4, 6.5, 0, 2 * M_PI);
     cairo_fill_preserve(cr);
     cairo_set_source_rgb(cr, 0.25, 0.25, 0.25);
@@ -367,20 +413,20 @@ static void on_draw_printer(GtkDrawingArea *area, cairo_t *cr, int w, int h, gpo
 
     /* Preview 3: Unplugged USB Connector Plug Icon Preview (ONLY when disconnected) */
     if (is_disconnected) {
-        cairo_set_source_rgba(cr, 0.08, 0.10, 0.14, 0.18);
+        cairo_set_source_rgba(cr, 0.08, 0.10, 0.14, is_dark ? 0.32 : 0.18);
         cairo_rectangle(cr, 0, 0, w, h);
         cairo_fill(cr);
 
-        double ux = 34.0, uy = h - 34.0;
+        double ux = 34.0, uy = h - 28.0;
         /* Detached cable tail */
-        cairo_set_source_rgb(cr, 0.25, 0.28, 0.32);
+        cairo_set_source_rgb(cr, is_dark ? 0.65 : 0.25, is_dark ? 0.68 : 0.28, is_dark ? 0.72 : 0.32);
         cairo_set_line_width(cr, 3.0);
         cairo_move_to(cr, 6, uy);
         cairo_line_to(cr, ux - 14, uy);
         cairo_stroke(cr);
 
         /* USB Plug Body */
-        cairo_set_source_rgb(cr, 0.96, 0.97, 0.99);
+        cairo_set_source_rgb(cr, 0.94, 0.95, 0.98);
         cairo_rectangle(cr, ux - 14, uy - 10, 20, 20);
         cairo_fill_preserve(cr);
         cairo_set_source_rgb(cr, 0.20, 0.23, 0.28);
@@ -396,14 +442,23 @@ static void on_draw_printer(GtkDrawingArea *area, cairo_t *cr, int w, int h, gpo
         cairo_stroke(cr);
 
         /* Red Prohibition Circle + Slash over USB Plug */
-        cairo_set_source_rgba(cr, 0.88, 0.12, 0.12, (g_anim_tick % 2 == 0) ? 0.95 : 0.65);
+        cairo_set_source_rgba(cr, 0.92, 0.18, 0.18, (g_anim_tick % 2 == 0) ? 0.95 : 0.65);
         cairo_set_line_width(cr, 2.6);
+        cairo_new_sub_path(cr);
         cairo_arc(cr, ux + 2, uy, 16.0, 0, 2 * M_PI);
         cairo_stroke(cr);
         cairo_move_to(cr, ux - 9, uy - 11);
         cairo_line_to(cr, ux + 13, uy + 11);
         cairo_stroke(cr);
     }
+}
+
+static void on_theme_changed(AdwStyleManager *sm, gpointer pspec, gpointer data) {
+    (void)sm;
+    (void)pspec;
+    (void)data;
+    if (g_drawing_area)
+        gtk_widget_queue_draw(g_drawing_area);
 }
 
 static void load_autopopup_pref(void) {
@@ -420,8 +475,8 @@ static void load_autopopup_pref(void) {
             *eq = '\0';
             const char *k = line;
             const char *v = eq + 1;
-            if (strcmp(k, "auto_popup_ui") == 0 && g_chk_autopopup) {
-                gtk_check_button_set_active(g_chk_autopopup, atoi(v) != 0);
+            if (strcmp(k, "auto_popup_ui") == 0 && g_sw_autopopup) {
+                adw_switch_row_set_active(g_sw_autopopup, atoi(v) != 0);
             }
         }
         line = strtok_r(NULL, "\n", &saveptr);
@@ -429,26 +484,27 @@ static void load_autopopup_pref(void) {
     g_loading_prefs = 0;
 }
 
-static void on_autopopup_toggled(GtkCheckButton *chk, gpointer d) {
+static void on_autopopup_notify(AdwSwitchRow *sw, gpointer pspec, gpointer d) {
+    (void)pspec;
     (void)d;
     if (g_loading_prefs)
         return;
     char cmd[64];
     snprintf(cmd, sizeof(cmd), "SET_PREF auto_popup_ui=%d",
-             gtk_check_button_get_active(chk) ? 1 : 0);
+             adw_switch_row_get_active(sw) ? 1 : 0);
     send_ctrl_cmd(cmd, NULL, 0);
 }
 
 static void on_btn_test_page_1(GtkWidget *w, gpointer d) {
     (void)w; (void)d;
     send_ctrl_cmd("TEST_PAGE 1", NULL, 0);
-    gtk_notebook_set_current_page(g_notebook, 0);
+    adw_view_stack_set_visible_child_name(g_view_stack, "status");
 }
 
 static void on_btn_test_page_3(GtkWidget *w, gpointer d) {
     (void)w; (void)d;
     send_ctrl_cmd("TEST_PAGE 3", NULL, 0);
-    gtk_notebook_set_current_page(g_notebook, 0);
+    adw_view_stack_set_visible_child_name(g_view_stack, "status");
 }
 
 static void on_btn_pause_toggle(GtkWidget *w, gpointer d) {
@@ -471,7 +527,7 @@ static void on_btn_cancel_clicked(GtkWidget *w, gpointer d) {
 static void on_btn_clean_clicked(GtkWidget *w, gpointer d) {
     (void)w; (void)d;
     send_ctrl_cmd("CLEAN", NULL, 0);
-    gtk_notebook_set_current_page(g_notebook, 0);
+    adw_view_stack_set_visible_child_name(g_view_stack, "status");
 }
 
 static void on_btn_poll_usb(GtkWidget *w, gpointer d) {
@@ -487,13 +543,22 @@ static gboolean on_window_close_request(GtkWindow *win, gpointer data) {
     return 0;
 }
 
+static void apply_headline_semantic_style(const char *semantic_class) {
+    gtk_widget_remove_css_class(g_lbl_headline, "success");
+    gtk_widget_remove_css_class(g_lbl_headline, "accent");
+    gtk_widget_remove_css_class(g_lbl_headline, "warning");
+    gtk_widget_remove_css_class(g_lbl_headline, "error");
+    if (semantic_class && semantic_class[0])
+        gtk_widget_add_css_class(g_lbl_headline, semantic_class);
+}
+
 static gboolean poll_daemon_status_timer(gpointer data) {
     (void)data;
     g_anim_tick++;
     char resp[4096];
     if (send_ctrl_cmd("STATUS", resp, sizeof(resp)) != 0) {
-        gtk_label_set_markup(g_lbl_headline,
-                             "<span size='large' weight='bold' foreground='#b91c1c'>Daemon Not Running (lbp2900d)</span>");
+        apply_headline_semantic_style("error");
+        gtk_label_set_text(g_lbl_headline, "Daemon Not Running (lbp2900d)");
         gtk_label_set_text(g_lbl_detail, "Start lbp2900d to communicate with Canon LASER SHOT LBP-2900.");
         gtk_widget_queue_draw(g_drawing_area);
         return 1;
@@ -548,48 +613,25 @@ static gboolean poll_daemon_status_timer(gpointer data) {
             g_cur_state == PRN_STATE_OUT_OF_PAPER || g_cur_state == PRN_STATE_MANUAL_DUPLEX_WAIT ||
             g_cur_state == PRN_STATE_ERROR || disc_with_jobs ||
             g_pending_jobs > g_prev_pending) {
-            gtk_notebook_set_current_page(g_notebook, 0);
+            adw_view_stack_set_visible_child_name(g_view_stack, "status");
             gtk_window_present(g_win);
         }
         g_prev_state = g_cur_state;
         g_prev_pending = g_pending_jobs;
     }
 
-    gtk_widget_remove_css_class(g_banner_box, "banner-ready");
-    gtk_widget_remove_css_class(g_banner_box, "banner-printing");
-    gtk_widget_remove_css_class(g_banner_box, "banner-alert");
-
-    const char *color_hex = "#0f172a";
+    /* Native Libadwaita semantic classes (.error, .accent, .success) for dynamic dark/light theming */
     if (!g_cur_usb || g_cur_state == PRN_STATE_DISCONNECTED ||
         g_cur_state == PRN_STATE_OUT_OF_PAPER || g_cur_state == PRN_STATE_ERROR) {
-        gtk_widget_add_css_class(g_banner_box, "banner-alert");
-        color_hex = "#b91c1c";
+        apply_headline_semantic_style("error");
     } else if (g_cur_state == PRN_STATE_PRINTING || g_cur_state == PRN_STATE_RENDERING ||
                g_cur_state == PRN_STATE_CLEANING || g_cur_state == PRN_STATE_MANUAL_DUPLEX_WAIT) {
-        gtk_widget_add_css_class(g_banner_box, "banner-printing");
-        color_hex = "#1d4ed8";
+        apply_headline_semantic_style("accent");
     } else {
-        gtk_widget_add_css_class(g_banner_box, "banner-ready");
-        color_hex = "#15803d";
+        apply_headline_semantic_style("success");
     }
 
-    char safe_headline[256];
-    size_t sp = 0;
-    for (size_t i = 0; headline[i] && sp + 6 < sizeof(safe_headline); ++i) {
-        if (headline[i] == '&') {
-            memcpy(safe_headline + sp, "&amp;", 5);
-            sp += 5;
-        } else {
-            safe_headline[sp++] = headline[i];
-        }
-    }
-    safe_headline[sp] = '\0';
-
-    char markup[384];
-    snprintf(markup, sizeof(markup),
-             "<span size='large' weight='bold' foreground='%s'>%s</span>",
-             color_hex, safe_headline);
-    gtk_label_set_markup(g_lbl_headline, markup);
+    gtk_label_set_text(g_lbl_headline, headline);
     gtk_label_set_text(g_lbl_detail, detail);
 
     /* Progress Bar & Log line (placed right above "USB 04a9:2676: ...") */
@@ -659,40 +701,62 @@ static gboolean poll_daemon_status_timer(gpointer data) {
     return 1;
 }
 
-static GtkWidget *build_status_monitor_tab(void) {
-    GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
-    set_widget_margins(vbox, 12, 12, 12, 12);
+static GtkWidget *build_status_monitor_page(void) {
+    GtkWidget *page = adw_preferences_page_new();
 
-    /* Top Row: Left = Printer Illustration (normal 210x175), Right = Live Status Box */
+    /* Group 1: Live Printer Visual & Status Card */
+    GtkWidget *grp_monitor = adw_preferences_group_new();
+    adw_preferences_page_add(page, grp_monitor);
+
+    GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 12);
+    adw_preferences_group_add(grp_monitor, vbox);
+
+    /* Top Row: Left = Printer Illustration (.card, 210x145), Right = Compact Status Card + 2 Bars */
     GtkWidget *top_hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12);
+    gtk_widget_set_valign(top_hbox, GTK_ALIGN_START);
     gtk_box_append(vbox, top_hbox);
+
+    GtkWidget *drawing_card = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+    gtk_widget_add_css_class(drawing_card, "card");
+    gtk_widget_set_hexpand(drawing_card, 0);
+    gtk_widget_set_vexpand(drawing_card, 0);
+    gtk_widget_set_valign(drawing_card, GTK_ALIGN_START);
 
     g_drawing_area = gtk_drawing_area_new();
     gtk_drawing_area_set_content_width(g_drawing_area, 210);
-    gtk_drawing_area_set_content_height(g_drawing_area, 175);
-    gtk_widget_set_size_request(g_drawing_area, 210, 175);
-    gtk_widget_set_hexpand(g_drawing_area, 0);
+    gtk_drawing_area_set_content_height(g_drawing_area, 118);
+    gtk_widget_set_size_request(g_drawing_area, 210, 118);
     gtk_widget_set_vexpand(g_drawing_area, 0);
+    gtk_widget_set_valign(g_drawing_area, GTK_ALIGN_START);
     gtk_drawing_area_set_draw_func(g_drawing_area, on_draw_printer, NULL, NULL);
-    gtk_box_append(top_hbox, g_drawing_area);
+    gtk_box_append(drawing_card, g_drawing_area);
+    gtk_box_append(top_hbox, drawing_card);
 
     GtkWidget *right_vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
     gtk_widget_set_hexpand(right_vbox, 1);
+    gtk_widget_set_vexpand(right_vbox, 0);
+    gtk_widget_set_valign(right_vbox, GTK_ALIGN_START);
     gtk_box_append(top_hbox, right_vbox);
 
-    g_banner_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
-    gtk_widget_set_vexpand(g_banner_box, 1);
-    gtk_widget_add_css_class(g_banner_box, "status-card");
-    gtk_widget_add_css_class(g_banner_box, "banner-ready");
+    g_banner_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
+    gtk_widget_set_vexpand(g_banner_box, 0);
+    gtk_widget_set_valign(g_banner_box, GTK_ALIGN_START);
+    gtk_widget_add_css_class(g_banner_box, "card");
+
+    GtkWidget *banner_inner = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
+    set_widget_margins(banner_inner, 10, 10, 14, 14);
+    gtk_box_append(g_banner_box, banner_inner);
 
     g_lbl_headline = gtk_label_new("Ready to Print");
     gtk_label_set_xalign(g_lbl_headline, 0.0f);
-    gtk_box_append(g_banner_box, g_lbl_headline);
+    gtk_widget_add_css_class(g_lbl_headline, "title-2");
+    gtk_widget_add_css_class(g_lbl_headline, "success");
+    gtk_box_append(banner_inner, g_lbl_headline);
 
     g_lbl_detail = gtk_label_new("Printer is ready");
     gtk_label_set_xalign(g_lbl_detail, 0.0f);
-    gtk_label_set_wrap(g_lbl_detail, 1);
-    gtk_box_append(g_banner_box, g_lbl_detail);
+    gtk_widget_add_css_class(g_lbl_detail, "dim-label");
+    gtk_box_append(banner_inner, g_lbl_detail);
 
     gtk_box_append(right_vbox, g_banner_box);
 
@@ -709,93 +773,142 @@ static GtkWidget *build_status_monitor_tab(void) {
     gtk_box_append(vbox, btn_hbox);
 
     g_btn_resume_paper = gtk_button_new_with_label("▶ Paper Loaded (Resume)");
-    gtk_widget_set_size_request(g_btn_resume_paper, 200, 36);
+    gtk_widget_set_size_request(g_btn_resume_paper, 210, 36);
     gtk_widget_set_hexpand(g_btn_resume_paper, 0);
+    gtk_widget_add_css_class(g_btn_resume_paper, "suggested-action");
     g_signal_connect(g_btn_resume_paper, "clicked", G_CALLBACK(on_btn_resume_paper_clicked), NULL);
     gtk_box_append(btn_hbox, g_btn_resume_paper);
 
     g_btn_pause = gtk_button_new_with_label("⏸ Pause Queue");
-    gtk_widget_set_size_request(g_btn_pause, 150, 36);
+    gtk_widget_set_size_request(g_btn_pause, 155, 36);
     gtk_widget_set_hexpand(g_btn_pause, 0);
     g_signal_connect(g_btn_pause, "clicked", G_CALLBACK(on_btn_pause_toggle), NULL);
     gtk_box_append(btn_hbox, g_btn_pause);
 
     g_btn_cancel = gtk_button_new_with_label("✕ Cancel Job");
-    gtk_widget_set_size_request(g_btn_cancel, 150, 36);
+    gtk_widget_set_size_request(g_btn_cancel, 155, 36);
     gtk_widget_set_hexpand(g_btn_cancel, 0);
+    gtk_widget_add_css_class(g_btn_cancel, "destructive-action");
     g_signal_connect(g_btn_cancel, "clicked", G_CALLBACK(on_btn_cancel_clicked), NULL);
     gtk_box_append(btn_hbox, g_btn_cancel);
 
-    /* Bottom telemetry footer: Log placed directly above "USB 04a9:..." */
-    GtkWidget *sep = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
-    gtk_box_append(vbox, sep);
+    /* Group 2: CAPT Telemetry Card — Log placed directly above "USB 04a9:2676: ..." */
+    GtkWidget *grp_telemetry = adw_preferences_group_new();
+    adw_preferences_page_add(page, grp_telemetry);
+
+    GtkWidget *telemetry_card = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
+    gtk_widget_add_css_class(telemetry_card, "card");
+    adw_preferences_group_add(grp_telemetry, telemetry_card);
+
+    GtkWidget *telemetry_inner = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
+    set_widget_margins(telemetry_inner, 10, 10, 14, 14);
+    gtk_box_append(telemetry_card, telemetry_inner);
 
     g_lbl_job_info = gtk_label_new("No active print job in queue  |  Completed Jobs: 0  |  Pages Printed: 0");
     gtk_label_set_xalign(g_lbl_job_info, 0.0f);
-    gtk_box_append(vbox, g_lbl_job_info);
+    gtk_label_set_wrap(g_lbl_job_info, 1);
+    gtk_box_append(telemetry_inner, g_lbl_job_info);
 
     g_lbl_tech_stats = gtk_label_new("USB 04a9:2676: Checking...");
     gtk_label_set_xalign(g_lbl_tech_stats, 0.0f);
-    gtk_box_append(vbox, g_lbl_tech_stats);
+    gtk_label_set_wrap(g_lbl_tech_stats, 1);
+    gtk_widget_add_css_class(g_lbl_tech_stats, "dim-label");
+    gtk_widget_add_css_class(g_lbl_tech_stats, "caption");
+    gtk_widget_add_css_class(g_lbl_tech_stats, "monospace");
+    gtk_box_append(telemetry_inner, g_lbl_tech_stats);
 
-    return vbox;
+    return page;
 }
 
-static GtkWidget *build_maintenance_tab(void) {
-    GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
-    set_widget_margins(vbox, 14, 14, 14, 14);
+static GtkWidget *create_maintenance_action_row(const char *title,
+                                                const char *subtitle,
+                                                const char *btn_label,
+                                                GCallback callback) {
+    GtkWidget *row = adw_action_row_new();
+    adw_preferences_row_set_title(row, title);
+    adw_action_row_set_subtitle(row, subtitle);
 
-    GtkWidget *lbl_intro = gtk_label_new(NULL);
-    gtk_label_set_markup(lbl_intro,
-        "<b>Canon LASER SHOT LBP-2900 Diagnostic &amp; Maintenance Utility</b>\n"
-        "Verify single-page printing, multi-page continuous pipelining, Out-of-Paper recovery,\n"
-        "and fixing assembly cleaning directly over USB (04a9:2676).");
-    gtk_label_set_xalign(lbl_intro, 0.0f);
-    gtk_box_append(vbox, lbl_intro);
+    GtkWidget *btn = gtk_button_new_with_label(btn_label);
+    gtk_widget_set_size_request(btn, 140, 34);
+    gtk_widget_set_hexpand(btn, 0);
+    gtk_widget_set_valign(btn, GTK_ALIGN_CENTER);
+    g_signal_connect(btn, "clicked", callback, NULL);
 
-    g_chk_autopopup = gtk_check_button_new_with_label(
+    adw_action_row_add_suffix(row, btn);
+    adw_action_row_set_activatable_widget(row, btn);
+    return row;
+}
+
+static GtkWidget *build_maintenance_page(void) {
+    GtkWidget *page = adw_preferences_page_new();
+
+    /* Preferences Group 1: Behavior */
+    GtkWidget *grp_behavior = adw_preferences_group_new();
+    adw_preferences_group_set_title(grp_behavior, "Status Monitor Behavior");
+    adw_preferences_page_add(page, grp_behavior);
+
+    g_sw_autopopup = adw_switch_row_new();
+    adw_preferences_row_set_title(g_sw_autopopup,
         "Automatically open Status Monitor when printing from any application");
-    gtk_check_button_set_active(g_chk_autopopup, 1);
-    g_signal_connect(g_chk_autopopup, "toggled", G_CALLBACK(on_autopopup_toggled), NULL);
-    gtk_box_append(vbox, g_chk_autopopup);
+    adw_action_row_set_subtitle(g_sw_autopopup,
+        "Raise this window immediately when a print job is submitted or needs paper");
+    adw_switch_row_set_active(g_sw_autopopup, 1);
+    g_signal_connect(g_sw_autopopup, "notify::active", G_CALLBACK(on_autopopup_notify), NULL);
+    adw_preferences_group_add(grp_behavior, g_sw_autopopup);
 
-    GtkWidget *btn_test1 = gtk_button_new_with_label("Print Windows-Style Canon LBP-2900 Test Page (1 Page)");
-    gtk_widget_set_size_request(btn_test1, 430, 36);
-    gtk_widget_set_hexpand(btn_test1, 0);
-    gtk_widget_set_halign(btn_test1, GTK_ALIGN_START);
-    g_signal_connect(btn_test1, "clicked", G_CALLBACK(on_btn_test_page_1), NULL);
-    gtk_box_append(vbox, btn_test1);
+    /* Preferences Group 2: Diagnostic & Maintenance Operations */
+    GtkWidget *grp_diag = adw_preferences_group_new();
+    adw_preferences_group_set_title(grp_diag, "Canon LASER SHOT LBP-2900 Diagnostic &amp; Maintenance");
+    adw_preferences_group_set_description(grp_diag,
+        "Verify single-page printing, multi-page continuous pipelining, Out-of-Paper recovery, "
+        "and fixing assembly cleaning directly over USB (04a9:2676).");
+    adw_preferences_page_add(page, grp_diag);
 
-    GtkWidget *btn_test3 = gtk_button_new_with_label("Print Multi-Page Continuous Pipeline Test (3 Pages)");
-    gtk_widget_set_size_request(btn_test3, 430, 36);
-    gtk_widget_set_hexpand(btn_test3, 0);
-    gtk_widget_set_halign(btn_test3, GTK_ALIGN_START);
-    g_signal_connect(btn_test3, "clicked", G_CALLBACK(on_btn_test_page_3), NULL);
-    gtk_box_append(vbox, btn_test3);
+    adw_preferences_group_add(grp_diag,
+        create_maintenance_action_row(
+            "Print Windows-Style Canon LBP-2900 Test Page (1 Page)",
+            "Verify 600 DPI Hi-SCoA band rendering and USB transfer",
+            "Print 1 Page",
+            G_CALLBACK(on_btn_test_page_1)));
 
-    GtkWidget *btn_clean = gtk_button_new_with_label("Clean Fixing Assembly (Fuser Roller Cleaning Cycle)");
-    gtk_widget_set_size_request(btn_clean, 430, 36);
-    gtk_widget_set_hexpand(btn_clean, 0);
-    gtk_widget_set_halign(btn_clean, GTK_ALIGN_START);
-    g_signal_connect(btn_clean, "clicked", G_CALLBACK(on_btn_clean_clicked), NULL);
-    gtk_box_append(vbox, btn_clean);
+    adw_preferences_group_add(grp_diag,
+        create_maintenance_action_row(
+            "Print Multi-Page Continuous Pipeline Test (3 Pages)",
+            "Test back-to-back multi-page pipelining and SetJobInfo2 heartbeats",
+            "Print 3 Pages",
+            G_CALLBACK(on_btn_test_page_3)));
 
-    GtkWidget *btn_poll = gtk_button_new_with_label("Query Live USB Extended Status (0xA0A8)");
-    gtk_widget_set_size_request(btn_poll, 430, 36);
-    gtk_widget_set_hexpand(btn_poll, 0);
-    gtk_widget_set_halign(btn_poll, GTK_ALIGN_START);
-    g_signal_connect(btn_poll, "clicked", G_CALLBACK(on_btn_poll_usb), NULL);
-    gtk_box_append(vbox, btn_poll);
+    adw_preferences_group_add(grp_diag,
+        create_maintenance_action_row(
+            "Clean Fixing Assembly (Fuser Roller Cleaning Cycle)",
+            "Run the hardware fuser cleaning routine (CAPT 0xE0AD)",
+            "Run Cleaning",
+            G_CALLBACK(on_btn_clean_clicked)));
 
-    return vbox;
+    adw_preferences_group_add(grp_diag,
+        create_maintenance_action_row(
+            "Query Live USB Extended Status (0xA0A8)",
+            "Poll hardware registers and clear any idle status flags",
+            "Query USB",
+            G_CALLBACK(on_btn_poll_usb)));
+
+    return page;
 }
 
 int main(int argc, char **argv) {
     (void)argc;
     (void)argv;
     g_set_prgname("canon-lbp2900");
-    g_set_application_name("Canon LBP2900 Status Monitor");
+    g_set_application_name("LBP2900 Status Monitor");
     gtk_init();
+    adw_init();
+
+    /* Native Dynamic Theming via AdwStyleManager (automatically follows system Dark/Light mode) */
+    g_style_mgr = adw_style_manager_get_default();
+    if (g_style_mgr) {
+        adw_style_manager_set_color_scheme(g_style_mgr, ADW_COLOR_SCHEME_DEFAULT);
+        g_signal_connect(g_style_mgr, "notify::dark", G_CALLBACK(on_theme_changed), NULL);
+    }
 
     GtkIconTheme *icon_theme = gtk_icon_theme_get_for_display(gdk_display_get_default());
     if (icon_theme) {
@@ -805,33 +918,38 @@ int main(int argc, char **argv) {
     }
     gtk_window_set_default_icon_name("canon-lbp2900");
 
-    const char *css =
-        ".status-card { padding: 10px 14px; border-radius: 6px; border: 1px solid #cbd5e1; }\n"
-        ".banner-ready { background-color: #f0fdf4; border-color: #86efac; }\n"
-        ".banner-printing { background-color: #eff6ff; border-color: #93c5fd; }\n"
-        ".banner-alert { background-color: #fef2f2; border-color: #f87171; border-width: 2px; }\n";
-
-    GtkCssProvider *provider = gtk_css_provider_new();
-    gtk_css_provider_load_from_string(provider, css);
-    gtk_style_context_add_provider_for_display(gdk_display_get_default(), provider, 600);
-
-    g_win = gtk_window_new();
+    /* Window & Header Architecture: AdwApplicationWindow + AdwToolbarView + AdwHeaderBar + AdwViewSwitcher */
+    g_win = adw_application_window_new(NULL);
     gtk_window_set_title(g_win, "LBP2900 Status Monitor");
     gtk_window_set_icon_name(g_win, "canon-lbp2900");
-    gtk_window_set_default_size(g_win, 680, 400);
+    gtk_window_set_default_size(g_win, 660, 380);
     g_signal_connect(g_win, "close-request", G_CALLBACK(on_window_close_request), NULL);
 
-    GtkWidget *root_vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-    gtk_window_set_child(g_win, root_vbox);
+    GtkWidget *toolbar_view = adw_toolbar_view_new();
+    GtkWidget *header_bar = adw_header_bar_new();
+    adw_header_bar_set_show_start_title_buttons(header_bar, 1);
+    adw_header_bar_set_show_end_title_buttons(header_bar, 1);
 
-    g_notebook = gtk_notebook_new();
-    gtk_widget_set_vexpand(g_notebook, 1);
-    gtk_box_append(root_vbox, g_notebook);
+    g_view_stack = adw_view_stack_new();
+    adw_view_stack_add_titled_with_icon(g_view_stack,
+                                        build_status_monitor_page(),
+                                        "status",
+                                        "CAPT Status Monitor",
+                                        "printer-symbolic");
+    adw_view_stack_add_titled_with_icon(g_view_stack,
+                                        build_maintenance_page(),
+                                        "maintenance",
+                                        "Maintenance & Test",
+                                        "preferences-system-symbolic");
 
-    gtk_notebook_append_page(g_notebook, build_status_monitor_tab(),
-                             gtk_label_new("CAPT Status Monitor"));
-    gtk_notebook_append_page(g_notebook, build_maintenance_tab(),
-                             gtk_label_new("Maintenance & Test"));
+    GtkWidget *view_switcher = adw_view_switcher_new();
+    adw_view_switcher_set_stack(view_switcher, g_view_stack);
+    adw_view_switcher_set_policy(view_switcher, ADW_VIEW_SWITCHER_POLICY_WIDE);
+    adw_header_bar_set_title_widget(header_bar, view_switcher);
+
+    adw_toolbar_view_add_top_bar(toolbar_view, header_bar);
+    adw_toolbar_view_set_content(toolbar_view, g_view_stack);
+    adw_application_window_set_content(g_win, toolbar_view);
 
     load_autopopup_pref();
     poll_daemon_status_timer(NULL);

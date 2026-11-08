@@ -33,14 +33,16 @@ sudo apt install -y \
     libcups2-dev \
     libcupsimage2 \
     libcupsimage2-dev \
-    libgtk-3-0 \
-    libgtk-3-dev \
+    libgtk-4-1 \
+    libgtk-4-dev \
+    libadwaita-1-0 \
+    libadwaita-1-dev \
     libcairo2 \
     libcairo2-dev
 ```
 
 **Note for ARM64 / other architectures:**  
-If libraries reside outside `/lib/x86_64-linux-gnu`, run `make` with:`make USB_SO=-lusb-1.0 GTK_LIBS="$(pkg-config --libs gtk+-3.0 cairo) -lm"`
+If libraries reside outside `/lib/x86_64-linux-gnu`, run `make` with:`make USB_SO=-lusb-1.0 GTK_LIBS="$(pkg-config --libs libadwaita-1 gtk4 cairo) -lm"`
 
 # **2\. Build the Software**
 

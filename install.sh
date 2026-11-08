@@ -129,7 +129,8 @@ if ! make all >/dev/null 2>&1 || [ "$FORCE_DEPS" -eq 1 ]; then
         run_as_root apt-get update -qq
         run_as_root apt-get install -y build-essential pkg-config ghostscript \
             libusb-1.0-0 libusb-1.0-0-dev libcups2-dev libcupsimage2-dev \
-            libgtk-4-1 libgtk-4-dev libcairo2 libcairo2-dev python3-gi gir1.2-gdkpixbuf-2.0
+            libgtk-4-1 libgtk-4-dev libadwaita-1-0 libadwaita-1-dev \
+            libcairo2 libcairo2-dev python3-gi gir1.2-gdkpixbuf-2.0
         make clean && make all
     else
         echo "Error: make failed and apt-get is not available. Please install dependencies." >&2

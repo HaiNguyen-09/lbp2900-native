@@ -74,6 +74,8 @@ sudo apt install -y \
     libcupsimage2-dev \
     libgtk-4-1 \
     libgtk-4-dev \
+    libadwaita-1-0 \
+    libadwaita-1-dev \
     libcairo2 \
     libcairo2-dev \
     python3-gi \
